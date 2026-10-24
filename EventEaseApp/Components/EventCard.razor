@@ -1,0 +1,81 @@
+@inject SessionState Session
+<article class="event-card @(Editable ? "event-card-editable" : "")">
+    @if (Editable)
+    {
+        <p class="eyebrow">Edit event · #@Event.Id</p>
+        <div class="field-grid">
+            <div class="form-field">
+                <label for="@($"name-{Event.Id}")">Event name</label>
+                <input id="@($"name-{Event.Id}")" type="text" maxlength="@EventValidation.MaxNameLength"
+                       aria-invalid="@(EventValidation.NameError(Event.Name) is not null)"
+                       aria-describedby="@($"name-error-{Event.Id}")"
+                       @bind:get="Event.Name" @bind:set="ChangeName" @bind:event="oninput" />
+                @if (EventValidation.NameError(Event.Name) is { } nameError)
+                {
+                    <span class="field-error" id="@($"name-error-{Event.Id}")">@nameError</span>
+                }
+            </div>
+            <div class="form-field">
+                <label for="@($"date-{Event.Id}")">Event date</label>
+                <input id="@($"date-{Event.Id}")" type="date"
+                       value="@DateInput"
+                       @onchange="ChangeDate"
+                       aria-invalid="@(EventValidation.DateError(Event.Date) is not null)"
+                       aria-describedby="@($"date-error-{Event.Id}")" />
+                @if (EventValidation.DateError(Event.Date) is { } dateError)
+                {
+                    <span class="field-error" id="@($"date-error-{Event.Id}")">@dateError</span>
+                }
+            </div>
+            <div class="form-field">
+                <label for="@($"location-{Event.Id}")">Location</label>
+                <input id="@($"location-{Event.Id}")" type="text" maxlength="@EventValidation.MaxLocationLength"
+                       aria-invalid="@(EventValidation.LocationError(Event.Location) is not null)"
+                       aria-describedby="@($"location-error-{Event.Id}")"
+                       @bind:get="Event.Location" @bind:set="ChangeLocation" @bind:event="oninput" />
+                @if (EventValidation.LocationError(Event.Location) is { } locationError)
+                {
+                    <span class="field-error" id="@($"location-error-{Event.Id}")">@locationError</span>
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="event-card-top">
+            <span class="date-tag">@Event.Date.ToString("dd MMM yyyy", CultureInfo.InvariantCulture)</span>
+            <span class="event-marker">@(Session.IsCheckedIn(Event.Id) ? "Checked in ✓" : Session.IsRegistered(Event.Id) ? "Registered ✓" : $"Event {Event.Id:00}")</span>
+        </div>
+        <h2>@Event.Name</h2>
+        <p class="location"><span aria-hidden="true">◎</span> @Event.Location</p>
+        <p class="card-description">@Event.Description</p>
+        <div class="card-actions">
+            <NavLink class="button-secondary" href="@($"/events/{Event.Id}")">View details <span aria-hidden="true">→</span></NavLink>
+            <NavLink class="text-link" href="@(Session.IsRegistered(Event.Id) ? "/attendance" : $"/register/{Event.Id}")">@(Session.IsRegistered(Event.Id) ? "My attendance" : "Register")</NavLink>
+        </div>
+    }
+</article>
+
+@code {
+    [Parameter, EditorRequired] public EventItem Event { get; set; } = default!;
+    [Parameter] public EventCallback<EventItem> EventChanged { get; set; }
+    [Parameter] public bool Editable { get; set; }
+
+    private string DateInput => Event.Date == default
+        ? string.Empty
+        : Event.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+    private Task ChangeName(string name) =>
+        EventChanged.InvokeAsync(Event with { Name = name });
+
+    private Task ChangeLocation(string location) =>
+        EventChanged.InvokeAsync(Event with { Location = location });
+
+    private Task ChangeDate(ChangeEventArgs args)
+    {
+        var rawDate = args.Value?.ToString();
+        var valid = DateTime.TryParseExact(rawDate, "yyyy-MM-dd",
+            CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed);
+        return EventChanged.InvokeAsync(Event with { Date = valid ? parsed : default });
+    }
+}

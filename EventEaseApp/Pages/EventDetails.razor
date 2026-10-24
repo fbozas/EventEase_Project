@@ -1,0 +1,83 @@
+@page "/events/{Id:int}"
+@inject EventCatalog Catalog
+<PageTitle>Event details | EventEase</PageTitle>
+
+<section class="page-section detail-page">
+    <NavLink href="/events" class="breadcrumb">← All events</NavLink>
+    @if (selectedEvent is null)
+    {
+        <h1>Event not found</h1>
+        <p class="muted">We couldn't find event #@Id. It may have been removed or the URL is incorrect.</p>
+        <NavLink href="/events" class="button-primary">Browse events</NavLink>
+    }
+    else
+    {
+        <p class="eyebrow">EVENT DETAILS · #@Id</p>
+        <h1>Shape your event.</h1>
+        <p class="page-lead">Edit fields to update the preview. Incorrect or empty values show inline errors and cannot be saved.</p>
+        <div class="detail-layout">
+            <div>
+                <EventCard @bind-Event="Draft" Editable="true" />
+                <div class="detail-actions">
+                    <button type="button" class="button-primary" @onclick="SaveChanges"
+                            disabled="@(!EventValidation.IsValid(Draft))">Save changes</button>
+                    <NavLink class="button-secondary" href="@($"/register/{Id}")">Go to registration <span aria-hidden="true">→</span></NavLink>
+                </div>
+                @if (!EventValidation.IsValid(Draft))
+                {
+                    <p class="field-error" role="alert">Correct the highlighted fields to enable saving.</p>
+                }
+                @if (!string.IsNullOrEmpty(message))
+                {
+                    <p class="status-message" role="status">@message</p>
+                }
+            </div>
+            <aside class="preview-panel">
+                <p class="eyebrow">LIVE PREVIEW</p>
+                <span class="preview-icon" aria-hidden="true">✦</span>
+                <h2>@(string.IsNullOrWhiteSpace(Draft.Name) ? "Untitled event" : Draft.Name)</h2>
+                <p>📅 @(EventValidation.DateError(Draft.Date) is null
+                    ? Draft.Date.ToString("dddd, dd MMMM yyyy", CultureInfo.InvariantCulture)
+                    : "Choose a valid future date")</p>
+                <p>◎ @(string.IsNullOrWhiteSpace(Draft.Location) ? "Add a location" : Draft.Location)</p>
+                <p class="preview-description">@Draft.Description</p>
+                <div class="preview-footnote">Changes are in-memory until you choose “Save changes”; F5 resets the demo.</div>
+            </aside>
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private EventItem? selectedEvent;
+    private string message = string.Empty;
+
+    private EventItem Draft
+    {
+        get => selectedEvent!;
+        set { selectedEvent = value; message = string.Empty; }
+    }
+
+    protected override void OnParametersSet()
+    {
+        selectedEvent = Catalog.FindById(Id);
+        message = string.Empty;
+    }
+
+    private void SaveChanges()
+    {
+        if (!EventValidation.IsValid(selectedEvent))
+        {
+            message = "Correct the invalid event fields before saving.";
+            return;
+        }
+        // Catalog.Update validates again even if called outside the UI.
+        if (Catalog.Update(selectedEvent!))
+        {
+            selectedEvent = Catalog.FindById(Id);
+            message = "Changes saved for this browser session (not after refresh).";
+        }
+        else
+            message = "Couldn't save this event. Please return to the event list.";
+    }
+}

@@ -1,0 +1,40 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject SessionState Session
+
+<div class="site-shell">
+    <header class="site-header">
+        <div class="content-width header-inner">
+            <NavLink class="brand" href="/" Match="NavLinkMatch.All" aria-label="EventEase home">
+                <span class="brand-symbol" aria-hidden="true">✦</span>
+                <span>EventEase<span class="brand-dot">.</span></span>
+            </NavLink>
+            <nav aria-label="Main navigation" class="site-navigation">
+                <NavLink href="/" Match="NavLinkMatch.All">Home</NavLink>
+                <NavLink href="/events">Explore events</NavLink>
+                <NavLink href="/attendance">My attendance (@Session.RegisteredCount)</NavLink>
+            </nav>
+            <NavLink href="/events" class="header-cta">Browse events <span aria-hidden="true">↗</span></NavLink>
+        </div>
+    </header>
+    <main id="main-content" class="content-width">
+        @Body
+    </main>
+    <footer class="site-footer">
+        <div class="content-width footer-inner">
+            <span>© 2026 EventEase · Final capstone</span>
+            <span>Blazor WebAssembly · Browser-tab session demo · No back-end</span>
+        </div>
+    </footer>
+</div>
+
+@code {
+    protected override void OnInitialized() => Session.Changed += OnSessionChanged;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await Session.InitializeAsync();
+    }
+
+    private void OnSessionChanged() => _ = InvokeAsync(StateHasChanged);
+    public void Dispose() => Session.Changed -= OnSessionChanged;
+}

@@ -1,0 +1,24 @@
+name: Build and verify EventEase
+on:
+  push:
+  pull_request:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Restore
+        run: dotnet restore EventEase.sln
+      - name: Build
+        run: dotnet build EventEase.sln --no-restore --configuration Release
+      - name: Run C# logic checks
+        run: dotnet run --project EventEase.Checks --configuration Release --no-build
+      - name: Publish static Blazor app
+        run: dotnet publish EventEaseApp/EventEaseApp.csproj --configuration Release --output ./publish
+      - uses: actions/upload-artifact@v4
+        with:
+          name: eventease-static-site
+          path: publish/wwwroot/

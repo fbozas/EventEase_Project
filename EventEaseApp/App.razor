@@ -1,0 +1,8 @@
+@* .NET 10 removed support for the old <NotFound> render fragment.
+   Router.NotFoundPage provides the supported friendly fallback. *@
+<Router AppAssembly="@typeof(App).Assembly" NotFoundPage="typeof(EventEaseApp.Pages.NotFound)">
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+    </Found>
+</Router>

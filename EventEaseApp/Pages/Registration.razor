@@ -1,0 +1,126 @@
+@page "/register/{Id:int}"
+@implements IDisposable
+@inject EventCatalog Catalog
+@inject SessionState Session
+<PageTitle>Register for an event | EventEase</PageTitle>
+
+<section class="page-section registration-page">
+    <NavLink href="@($"/events/{Id}")" class="breadcrumb">← Event details</NavLink>
+    @if (selectedEvent is null)
+    {
+        <h1>Event not found</h1>
+        <p class="muted">We couldn't find this event in the sample catalog.</p>
+        <NavLink href="/events" class="button-primary">Browse events</NavLink>
+    }
+    else
+    {
+        <p class="eyebrow">EVENT REGISTRATION</p>
+        <h1>Save your spot.</h1>
+        <p class="page-lead">Register with validated details, then manage attendance for this browser session.</p>
+        <div class="registration-layout">
+            <div class="registration-form-panel">
+                @if (!Session.IsReady)
+                {
+                    <p role="status">Loading your session…</p>
+                }
+                else if (Session.IsRegistered(Id) || confirmed)
+                {
+                    <div class="confirmation" role="status">
+                        <span class="confirm-mark">✓</span>
+                        <h2>@(string.IsNullOrWhiteSpace(confirmationName) ? "You're registered!" : $"You're on the list, {confirmationName}!")</h2>
+                        <p>@(Session.IsCheckedIn(Id) ? "You've checked in for this event." : "Your registration is recorded for this browser-tab session.")</p>
+                        <NavLink href="/attendance" class="button-primary">Manage attendance →</NavLink>
+                        <p class="form-note">Demo only. No registration is sent to a server. Name and email are not persisted.</p>
+                    </div>
+                }
+                else
+                {
+                    <h2>Your details</h2>
+                    <EditForm Model="@registration" OnValidSubmit="SubmitRegistration" OnInvalidSubmit="HandleInvalidSubmit">
+                        <DataAnnotationsValidator />
+                        <div class="form-field">
+                            <label for="full-name">Full name</label>
+                            <InputText id="full-name" autocomplete="name" maxlength="100"
+                                       @bind-Value="registration.FullName" placeholder="e.g. Alex Morgan" />
+                            <ValidationMessage For="@(() => registration.FullName)" />
+                        </div>
+                        <div class="form-field">
+                            <label for="email">Email address</label>
+                            <InputText id="email" type="email" autocomplete="email" maxlength="254"
+                                       @bind-Value="registration.Email" placeholder="alex@example.com" />
+                            <ValidationMessage For="@(() => registration.Email)" />
+                        </div>
+                        @if (!string.IsNullOrEmpty(formError))
+                        {
+                            <p class="field-error" role="alert">@formError</p>
+                        }
+                        <button type="submit" class="button-primary form-submit" disabled="@isSubmitting">
+                            @(isSubmitting ? "Saving…" : "Complete registration") <span aria-hidden="true">→</span>
+                        </button>
+                        <p class="form-note">Demo only · No email is sent and no personal information is stored.</p>
+                    </EditForm>
+                }
+            </div>
+            <aside class="booking-summary">
+                <p class="eyebrow">YOU'RE REGISTERING FOR</p>
+                <h2>@selectedEvent.Name</h2>
+                <p>📅 @selectedEvent.Date.ToString("dd MMMM yyyy", CultureInfo.InvariantCulture)</p>
+                <p>◎ @selectedEvent.Location</p>
+                <NavLink href="@($"/events/{Id}")" class="text-link">View event details →</NavLink>
+            </aside>
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private EventItem? selectedEvent;
+    private RegistrationInput registration = new();
+    private bool confirmed;
+    private bool isSubmitting;
+    private string confirmationName = string.Empty;
+    private string formError = string.Empty;
+
+    protected override void OnInitialized() => Session.Changed += OnSessionChanged;
+
+    protected override void OnParametersSet()
+    {
+        selectedEvent = Catalog.FindById(Id);
+        confirmed = false;
+        isSubmitting = false;
+        confirmationName = string.Empty;
+        formError = string.Empty;
+        registration = new RegistrationInput();
+    }
+
+    private async Task SubmitRegistration()
+    {
+        if (isSubmitting || selectedEvent is null || !RegistrationRules.IsValid(registration))
+        {
+            formError = "Please correct the highlighted fields before registering.";
+            return;
+        }
+
+        isSubmitting = true;
+        formError = string.Empty;
+        try
+        {
+            var added = await Session.RegisterAsync(Id);
+            confirmed = added || Session.IsRegistered(Id);
+            if (confirmed)
+                confirmationName = registration.FullName.Trim();
+            else
+                formError = "Registration could not be completed. Please try again.";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private void HandleInvalidSubmit(EditContext _) =>
+        formError = "Please correct the highlighted fields before registering.";
+
+    private void OnSessionChanged() => _ = InvokeAsync(StateHasChanged);
+    public void Dispose() => Session.Changed -= OnSessionChanged;
+}

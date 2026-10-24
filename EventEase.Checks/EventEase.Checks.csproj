@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <!-- Link app's real non-UI logic into a dependency-free console test runner. -->
+  <ItemGroup>
+    <Compile Include="../EventEaseApp/Models/EventItem.cs" Link="Models/EventItem.cs" />
+    <Compile Include="../EventEaseApp/Services/EventCatalog.cs" Link="Services/EventCatalog.cs" />
+    <Compile Include="../EventEaseApp/Services/EventValidation.cs" Link="Services/EventValidation.cs" />
+    <Compile Include="../EventEaseApp/Services/EventSearch.cs" Link="Services/EventSearch.cs" />
+    <Compile Include="../EventEaseApp/Models/RegistrationInput.cs" Link="Models/RegistrationInput.cs" />
+    <Compile Include="../EventEaseApp/Models/AttendanceEntry.cs" Link="Models/AttendanceEntry.cs" />
+    <Compile Include="../EventEaseApp/Models/SessionSnapshot.cs" Link="Models/SessionSnapshot.cs" />
+    <Compile Include="../EventEaseApp/Services/AttendanceLedger.cs" Link="Services/AttendanceLedger.cs" />
+    <Compile Include="../EventEaseApp/Services/RegistrationRules.cs" Link="Services/RegistrationRules.cs" />
+  </ItemGroup>
+</Project>

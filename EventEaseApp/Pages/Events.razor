@@ -1,0 +1,118 @@
+@page "/"
+@page "/events"
+@inject EventCatalog Catalog
+<PageTitle>Explore events | EventEase</PageTitle>
+
+<section class="hero">
+    <div>
+        <p class="eyebrow">GREAT EVENTS START HERE</p>
+        <h1>Find the next event<br /><em>worth showing up for.</em></h1>
+        <p class="hero-description">Discover thoughtful gatherings, inspiring conferences and new connections in one simple place.</p>
+        <a class="button-primary" href="#upcoming">Explore events <span aria-hidden="true">↘</span></a>
+    </div>
+    <aside class="hero-art" aria-label="EventEase curated events">
+        <div class="art-orbit orbit-one"></div>
+        <div class="art-orbit orbit-two"></div>
+        <div class="art-disc">✳</div>
+        <div class="art-ticket"><span>YOUR NEXT</span><strong>BIG<br />MOMENT</strong><small>STARTS HERE · 2027</small></div>
+    </aside>
+</section>
+
+<section id="upcoming" class="page-section event-section">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">CURATED EXPERIENCES</p>
+            <h2>Upcoming events</h2>
+            <p class="muted">Something exciting is always around the corner.</p>
+        </div>
+        <div class="search-wrap">
+            <label for="search-events">Search events</label>
+            <input id="search-events" type="search" placeholder="Event or city..."
+                   @bind:get="searchTerm" @bind:set="SetSearch" @bind:event="oninput" />
+        </div>
+    </div>
+
+    <div class="demo-toolbar">
+        <div>
+            <strong>Performance demo</strong>
+            <span class="muted">Load 2,000 generated events to test large-list rendering (demo only).</span>
+        </div>
+        @if (Catalog.HasDemoEvents)
+        {
+            <button type="button" class="button-secondary" @onclick="ClearDemo">Restore 4 events</button>
+        }
+        else
+        {
+            <button type="button" class="button-secondary" @onclick="LoadDemo">Load 2,000 demo events</button>
+        }
+    </div>
+
+    <p class="results-summary" role="status">
+        Showing @Math.Min(visibleCount, filteredEvents.Count) of @filteredEvents.Count matching events
+        · filter/sort: @filterMilliseconds.ToString("F2", CultureInfo.InvariantCulture) ms (excludes browser rendering)
+    </p>
+    @if (filteredEvents.Count == 0)
+    {
+        <div class="empty-state">No events match your search. Try a different keyword.</div>
+    }
+    else
+    {
+        <div class="events-grid">
+            @foreach (var item in VisibleEvents)
+            {
+                <EventCard @key="item.Id" Event="item" />
+            }
+        </div>
+        @if (visibleCount < filteredEvents.Count)
+        {
+            <div class="load-more-wrap">
+                <button type="button" class="button-secondary" @onclick="ShowMore">
+                    Load more events (@(filteredEvents.Count - visibleCount) remaining)
+                </button>
+            </div>
+        }
+    }
+</section>
+
+@code {
+    private const int PageSize = 24;
+    private string searchTerm = string.Empty;
+    private List<EventItem> filteredEvents = [];
+    private int visibleCount = PageSize;
+    private double filterMilliseconds;
+
+    // Only the first visible batch becomes Blazor components/DOM nodes.
+    private IEnumerable<EventItem> VisibleEvents => filteredEvents.Take(visibleCount);
+
+    protected override void OnInitialized() => ApplyFilter();
+
+    private void SetSearch(string? term)
+    {
+        searchTerm = term ?? string.Empty;
+        ApplyFilter();
+    }
+
+    private void ApplyFilter()
+    {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        filteredEvents = EventSearch.Filter(Catalog.GetAll(), searchTerm);
+        sw.Stop();
+        filterMilliseconds = sw.Elapsed.TotalMilliseconds;
+        visibleCount = PageSize;
+    }
+
+    private void ShowMore() =>
+        visibleCount = Math.Min(visibleCount + PageSize, filteredEvents.Count);
+
+    private void LoadDemo()
+    {
+        Catalog.LoadDemoEvents();
+        ApplyFilter();
+    }
+
+    private void ClearDemo()
+    {
+        Catalog.ClearDemoEvents();
+        ApplyFilter();
+    }
+}

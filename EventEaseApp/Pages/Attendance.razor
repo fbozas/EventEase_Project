@@ -1,0 +1,86 @@
+@page "/attendance"
+@implements IDisposable
+@inject EventCatalog Catalog
+@inject SessionState Session
+<PageTitle>My attendance | EventEase</PageTitle>
+
+<section class="page-section attendance-page">
+    <NavLink href="/events" class="breadcrumb">← Explore events</NavLink>
+    <p class="eyebrow">YOUR EVENT JOURNEY</p>
+    <h1>Attendance tracker.</h1>
+    <p class="page-lead">Keep track of events you've registered for and check in when you attend.</p>
+
+    @if (!Session.IsReady)
+    {
+        <p role="status">Restoring your session…</p>
+    }
+    else
+    {
+        <div class="session-panel" role="status">
+            <div><span class="session-stat">@Session.RegisteredCount</span><span>Registrations</span></div>
+            <div><span class="session-stat">@Session.CheckedInCount</span><span>Checked in</span></div>
+            <div><span class="session-stat">@Session.SessionId</span><span>Tab session ID</span></div>
+        </div>
+
+        @if (Session.Entries.Count == 0)
+        {
+            <div class="empty-state attendance-empty">
+                <h2>No registrations yet</h2>
+                <p>Explore the catalog and register for an event to see it here.</p>
+                <NavLink href="/events" class="button-primary">Browse events →</NavLink>
+            </div>
+        }
+        else
+        {
+            <div class="attendance-list">
+                @foreach (var entry in Session.Entries)
+                {
+                    var eventItem = Catalog.FindById(entry.EventId);
+                    <article class="attendance-item" @key="entry.EventId">
+                        <div>
+                            <span class="date-tag">@(entry.CheckedIn ? "Checked in" : "Registered")</span>
+                            <h2>@(eventItem?.Name ?? $"Event #{entry.EventId} unavailable")</h2>
+                            @if (eventItem is not null)
+                            {
+                                <p class="muted">@eventItem.Date.ToString("dd MMM yyyy", CultureInfo.InvariantCulture) · @eventItem.Location</p>
+                            }
+                            else
+                            {
+                                <p class="muted">This demo event may have been removed after a refresh.</p>
+                            }
+                        </div>
+                        <div class="attendance-actions">
+                            @if (!entry.CheckedIn && eventItem is not null)
+                            {
+                                <button type="button" class="button-primary" @onclick="() => CheckIn(entry.EventId)">Check in</button>
+                            }
+                            <button type="button" class="button-secondary" @onclick="() => Cancel(entry.EventId)">Cancel registration</button>
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+        <p class="form-note attendance-note">
+            Browser-tab demo only: attendance is not shared with other users.
+            @(Session.StorageAvailable ? "Session state survives refresh in this tab and disappears when its browser session ends." : "Browser storage is blocked, so state lasts only until refresh.")
+            No names or email addresses are persisted.
+        </p>
+    }
+</section>
+
+@code {
+    protected override void OnInitialized() => Session.Changed += OnSessionChanged;
+
+    private async Task CheckIn(int eventId)
+    {
+        await Session.CheckInAsync(eventId);
+    }
+
+    private async Task Cancel(int eventId)
+    {
+        await Session.CancelAsync(eventId);
+    }
+
+    private void OnSessionChanged() => _ = InvokeAsync(StateHasChanged);
+    public void Dispose() => Session.Changed -= OnSessionChanged;
+}
